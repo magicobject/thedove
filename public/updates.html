@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/style.css?v=2026.10.20.001">
+<link rel="stylesheet" href="/css/style.css?v=2026.10.20.002">
 </head>
 <body>
 
@@ -33,6 +33,10 @@
         <p>An internal changelog: every build number and what changed. This page isn't linked from anywhere else on the site.</p>
       </div>
       <ul class="changelog">
+        <li>
+          <div class="changelog-meta"><span class="changelog-build">2026.10.20.002</span><span class="changelog-author">Greg Wright</span><span class="changelog-date">20 October 2026</span></div>
+          <p>Add a <code>.claude/launch.json</code> preview config so the site can be previewed locally through <code>wrangler dev</code> (applies the real <code>_headers</code>/CSP, unlike the plain static server). No visible changes.</p>
+        </li>
         <li>
           <div class="changelog-meta"><span class="changelog-build">2026.10.20.001</span><span class="changelog-author">Greg Wright</span><span class="changelog-date">20 October 2026</span></div>
           <p>Initial build of The Dove website: home page with the about, draft timetable and get-in-touch sections, a 404 page, and the shared build/test/security pipeline adopted from kingtonfoodbank and kington-parishes.</p>
@@ -61,11 +65,11 @@
     </div>
     <div class="fine">
       <span>&copy; <span id="year"></span> The Dove. Site by <a href="https://mediawright.uk">mediawright.uk</a>.</span>
-      <span class="build-number">Build 2026.10.20.001</span>
+      <span class="build-number">Build 2026.10.20.002</span>
     </div>
   </div>
 </footer>
 
-<script src="/js/main.js?v=2026.10.20.001" defer></script>
+<script src="/js/main.js?v=2026.10.20.002" defer></script>
 </body>
 </html>
