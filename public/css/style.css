@@ -103,7 +103,7 @@ header.site {
   text-decoration: none;
   letter-spacing: 0.01em;
 }
-.brand-mark { color: var(--wine-dark); flex: none; }
+.brand-mark { flex: none; border-radius: 50%; }
 nav.links {
   display: flex;
   gap: 28px;
@@ -431,6 +431,7 @@ footer.site .build-number { white-space: nowrap; }
 .dove-icon {
   margin: 0 auto 18px;
   display: block;
+  border-radius: 50%;
 }
 
 /* Inside the 404 card, the eyebrow is a centred badge flanked by two
