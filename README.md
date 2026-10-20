@@ -61,23 +61,25 @@ Running `npm run build` reads all four and writes the finished files into `publi
 
 See "Build numbers and the changelog" below -- in short, add a new `<li>` at the *top* of the list in `src/pages/updates.html`, with the build number the commit is about to get, before you commit.
 
-## The pre-commit hook and the build number in the footer
+## The pre-commit hook and the build number
 
-Every page's footer shows a build number like `Build 2026.10.20.001` (format `yyyy.mm.dd.NNN`, where `NNN` counts commits made that day, stored in [build-number.json](build-number.json)).
+The build number (format `yyyy.mm.dd.NNN`, where `NNN` counts commits made that day, stored in [build-number.json](build-number.json)) only ever appears in one place: the changelog on `/updates.html`. It is deliberately *not* stamped into every page's footer -- that would turn even a one-line content fix into a diff touching every generated file, for no real benefit.
 
-This is maintained automatically, not by hand. `npm install` runs the `prepare` script, which points git at the tracked [.githooks/pre-commit](.githooks/pre-commit) hook. On every commit, that hook:
+The build number is maintained automatically, not by hand. `npm install` runs the `prepare` script, which points git at the tracked [.githooks/pre-commit](.githooks/pre-commit) hook. On every commit, that hook:
 
 1. Runs [scripts/bump-build-number.mjs](scripts/bump-build-number.mjs), which increments today's counter in `build-number.json`.
-2. Runs `npm run build`, regenerating every file in `public/` -- including stamping the new build number into each footer and cache-busting `css/style.css?v=...` and `js/main.js?v=...`.
+2. Runs `npm run build`, regenerating every file in `public/`.
 3. Stages the results (`git add public build-number.json`) so they're included in the commit you're about to make.
 
 In other words: **you never bump the build number or rebuild `public/` yourself** -- just edit source files under `src/`/`templates/` and commit as normal.
 
+Cache-busting for `css/style.css?v=...`, `js/main.js?v=...` and the two logo PNGs is separate, and doesn't use the build number either: `scripts/build.mjs` hashes each asset's own file content and uses that as the `?v=` query string. Change the CSS and only the CSS's hash (and the pages that load it) changes -- the build number and every other page are untouched.
+
 ## Build tags and the /updates changelog
 
-Every commit gets a matching git tag, `build-<date>.<NNN>` (e.g. `build-2026.10.20.001`) -- the same value as the footer's "Build ..." text for that commit, so any deployed build is checkoutable by name (`git checkout build-2026.10.20.001`) without digging through `git log`.
+Every commit gets a matching git tag, `build-<date>.<NNN>` (e.g. `build-2026.10.20.001`) -- the same value as the newest entry's `.changelog-build` text on `/updates.html`, so any deployed build is checkoutable by name (`git checkout build-2026.10.20.001`) without digging through `git log`.
 
-[src/pages/updates.html](src/pages/updates.html) (served at `/updates.html`) is a hand-maintained changelog, one entry per build number, newest first -- the human-readable counterpart to the git tags. It's a real page, built by the normal pipeline like any other, but it's deliberately not linked from anywhere on the site, and is `robots: noindex`.
+[src/pages/updates.html](src/pages/updates.html) (served at `/updates.html`) is a hand-maintained changelog, one entry per build number, newest first -- the only place the build number is shown. It's a real page, built by the normal pipeline like any other, but it's deliberately not linked from anywhere on the site, and is `robots: noindex`.
 
 ## Accessibility
 
@@ -100,7 +102,8 @@ Either way, nothing is ever submitted anywhere by this site -- the visitor's own
 
 - **[homepage.spec.ts](test/homepage.spec.ts)** -- the home page loads with its nav and all three sections, states the venue and opening status, and lists every timetable entry.
 - **[contact-details.spec.ts](test/contact-details.spec.ts)** -- no leftover `{{TOKEN}}` placeholders and no plain email address ever reaches the page source; the "Get in touch" button resolves to a working, pre-filled `mailto:` link once JavaScript runs, and degrades to readable text without it.
-- **[footer.spec.ts](test/footer.spec.ts)** -- every page shows a correctly-formatted build number and the "Site by mediawright.uk" credit.
+- **[footer.spec.ts](test/footer.spec.ts)** -- every page credits "Site by mediawright.uk" in the footer.
+- **[updates.spec.ts](test/updates.spec.ts)** -- `/updates.html` lists correctly-formatted build numbers, and no other page shows one.
 - **[not-found.spec.ts](test/not-found.spec.ts)** -- unknown URLs get a real 404 status and the branded 404 page, which is `noindex`, has no main nav, and still shows a working contact link.
 - **[accessibility.spec.ts](test/accessibility.spec.ts)** -- an axe-core scan of every page with zero tolerated violations.
 

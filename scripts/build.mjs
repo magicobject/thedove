@@ -4,7 +4,8 @@
 // editing anything in templates/ or src/, and commit the regenerated
 // public/*.html -- Cloudflare serves that directory as-is.
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { NAV, PAGES } from '../src/pages.config.mjs';
@@ -20,19 +21,34 @@ const pageTemplate = read('templates/page.html');
 const headerTemplate = read('templates/header.html').trimEnd();
 const footerTemplate = read('templates/footer.html').trimEnd();
 
-function readBuildNumber() {
-  const file = join(root, 'build-number.json');
-  if (!existsSync(file)) return '0000.00.00.000';
-  const { date, build } = JSON.parse(readFileSync(file, 'utf8'));
-  return `${date}.${String(build).padStart(3, '0')}`;
+// Cache-busting for hand-maintained static assets uses a hash of the asset's
+// own content, not the shared build number -- the build number only
+// identifies a commit on /updates.html. A content hash only changes the
+// pages/assets that actually changed, instead of stamping every page and
+// query string on every commit (which used to turn even a one-line fix into
+// a diff touching every generated file).
+const ASSET_FILES = {
+  CSS_HASH: 'css/style.css',
+  JS_HASH: 'js/main.js',
+  DOVE_MARK_28_HASH: 'images/dove-mark-28.png',
+  DOVE_MARK_72_HASH: 'images/dove-mark-72.png',
+};
+
+function assetHashTokens() {
+  const tokens = {};
+  for (const [token, relPath] of Object.entries(ASSET_FILES)) {
+    const buf = readFileSync(join(root, 'public', relPath));
+    tokens[token] = createHash('sha256').update(buf).digest('hex').slice(0, 10);
+  }
+  return tokens;
 }
 
 // camelCase site.config.mjs keys become {{UPPER_SNAKE_CASE}} tokens, e.g.
 // mediawrightLabel -> {{MEDIAWRIGHT_LABEL}}. Every token is replaced
 // everywhere it appears -- in templates and in page content alike -- so
 // contact details and facts only ever need to be typed once.
-function tokensFromSite(site, buildNumber) {
-  const tokens = { BUILD_NUMBER: buildNumber };
+function tokensFromSite(site) {
+  const tokens = {};
   for (const [key, value] of Object.entries(site)) {
     const token = key.replace(/[A-Z]/g, (c) => `_${c}`).toUpperCase();
     // Email addresses never become plain tokens: {{EMAIL}} would put the
@@ -59,8 +75,7 @@ function renderNavItems(links, slug) {
   return links.map(({ href, label }) => `      <a href="${pageHref(href, slug)}">${label}</a>`).join('\n');
 }
 
-const buildNumber = readBuildNumber();
-const tokens = tokensFromSite(SITE, buildNumber);
+const tokens = { ...tokensFromSite(SITE), ...assetHashTokens() };
 
 const renderHeader = (slug) => headerTemplate
   .replace('{{NAV_ITEMS}}', renderNavItems(NAV, slug))
