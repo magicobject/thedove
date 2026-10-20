@@ -1,0 +1,478 @@
+/*
+  Colour palette -- warm reds, purples and golds drawn from the stained-glass
+  dove roundel on the leaflet, distinct from kingtonfoodbank's brick/green
+  palette. Every text/background pairing actually used on the site is
+  checked against WCAG AA (4.5:1 normal text, 3:1 large text/UI), not
+  eyeballed -- ratios computed with the standard relative-luminance formula:
+
+    ink       #2A2318-equivalent (--ink)      on bg       #F7EEE9  -> 13.89:1
+    ink-soft  (--ink-soft)                     on bg       #F7EEE9  -> 7.55:1
+    ink-soft                                   on bg-alt   #EFE0DA  -> 6.72:1
+    ink                                        on card     #FFFBF6  -> 15.42:1
+    ink-soft                                   on card     #FFFBF6  -> 8.38:1
+    wine-dark (--wine-dark, link colour)       on bg       #F7EEE9  -> 12.96:1
+    wine-dark                                  on bg-alt   #EFE0DA  -> 11.54:1
+    purple    (--purple, kickers)              on bg       #F7EEE9  -> 10.03:1
+    wine      (--wine, large text/UI only)     on bg       #F7EEE9  -> 9.79:1
+    cream     #F2ECDD (footer body text)       on ink (footer bg)   -> 13.48:1
+    footer-muted #C9BCC6                       on ink (footer bg)   -> 8.69:1
+    gold      #D9A84E (footer links, large/UI) on ink (footer bg)   ->  7.31:1
+    footer-fine #A89AA3 (small copyright text) on ink (footer bg)   ->  5.91:1
+    bg        #FBF7EE (btn-primary text)       on wine (btn bg)     -> 10.47:1
+  --gold (#D9A84E) is never used as normal text on the light --bg/--bg-alt/
+  --card backgrounds (that pairing is only 1.90:1) -- there it is decorative
+  only (underlines, dots, badge borders).
+*/
+:root {
+  --bg: #F7EEE9;
+  --bg-alt: #EFE0DA;
+  --card: #FFFBF6;
+  --ink: #2A2318;
+  --ink-soft: #55493A;
+  --wine: #6B1E3C;
+  --wine-dark: #4A1329;
+  --purple: #4B2E58;
+  --gold: #D9A84E;
+  --line: rgba(42,35,24,0.14);
+  --radius: 6px;
+  --max: 960px;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 18px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, .display {
+  font-family: 'Fraunces', serif;
+  color: var(--ink);
+  margin: 0;
+}
+
+a { color: var(--wine-dark); }
+a:focus-visible, button:focus-visible, .btn:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.wrap {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+/* ---------- Nav ---------- */
+header.site {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(247,238,233,0.92);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--line);
+}
+.nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 28px;
+  max-width: var(--max);
+  margin: 0 auto;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 1.25rem;
+  color: var(--wine-dark);
+  text-decoration: none;
+  letter-spacing: 0.01em;
+}
+.brand-mark { color: var(--wine-dark); flex: none; }
+nav.links {
+  display: flex;
+  gap: 28px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+nav.links a {
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  padding-bottom: 3px;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+nav.links a:hover { border-color: var(--wine); color: var(--wine-dark); }
+
+@media (max-width: 620px) {
+  nav.links { gap: 16px; font-size: 0.85rem; }
+  .nav-row { padding: 14px 20px; }
+}
+
+/* ---------- Hero ---------- */
+.hero {
+  padding: 72px 0 56px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-grain {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 18% 22%, rgba(107,30,60,0.08), transparent 45%),
+                     radial-gradient(circle at 85% 10%, rgba(75,46,88,0.08), transparent 40%);
+  pointer-events: none;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  color: var(--purple);
+  margin-bottom: 18px;
+}
+.eyebrow::before {
+  content: "";
+  width: 22px;
+  height: 1px;
+  background: var(--purple);
+}
+.hero h1 {
+  font-size: clamp(2.4rem, 5.6vw, 3.6rem);
+  font-weight: 700;
+  line-height: 1.1;
+  max-width: 16ch;
+}
+.hero .lede {
+  margin-top: 20px;
+  font-size: 1.2rem;
+  color: var(--ink-soft);
+  max-width: 48ch;
+}
+.hero-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+.hero-body {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 48px;
+  align-items: center;
+  position: relative;
+}
+@media (max-width: 800px) {
+  .hero-body { grid-template-columns: 1fr; }
+}
+
+.btn {
+  display: inline-block;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.98rem;
+  padding: 14px 26px;
+  border-radius: var(--radius);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-primary {
+  background: var(--wine);
+  color: #FBF7EE;
+  box-shadow: 0 3px 0 var(--wine-dark);
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 0 var(--wine-dark); }
+.btn-secondary {
+  background: transparent;
+  color: var(--purple);
+  border: 2px solid var(--purple);
+}
+.btn-secondary:hover { background: var(--purple); color: var(--bg); }
+
+/* ---------- Notice card (signature element) ---------- */
+.notice {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 30px 26px 26px;
+  transform: rotate(-1.4deg);
+  box-shadow: 0 18px 34px -18px rgba(42,35,24,0.35), 0 2px 0 rgba(42,35,24,0.06);
+  position: relative;
+}
+.notice::before, .notice::after {
+  content: "";
+  position: absolute;
+  width: 46px;
+  height: 16px;
+  background: rgba(217,168,78,0.55);
+  top: -9px;
+  box-shadow: 0 2px 3px rgba(0,0,0,0.12);
+}
+.notice::before { left: 22px; transform: rotate(-6deg); }
+.notice::after { right: 22px; transform: rotate(5deg); }
+.notice .tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.notice .day {
+  font-family: 'Fraunces', serif;
+  font-weight: 900;
+  font-size: clamp(2rem, 6vw, 2.6rem);
+  color: var(--wine-dark);
+  line-height: 1;
+  margin-top: 6px;
+  position: relative;
+  display: inline-block;
+}
+.notice .day svg {
+  position: absolute;
+  left: 0;
+  bottom: -10px;
+  width: 100%;
+  height: 14px;
+}
+.notice .time {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 1.5rem;
+  color: var(--ink);
+  margin-top: 14px;
+}
+.notice .place {
+  margin-top: 16px;
+  font-size: 0.98rem;
+  color: var(--ink-soft);
+  border-top: 1px dashed var(--line);
+  padding-top: 14px;
+}
+.notice .place strong { color: var(--ink); }
+
+/* ---------- Sections ---------- */
+section { padding: 84px 0; }
+section.alt { background: var(--bg-alt); }
+.section-head {
+  max-width: 58ch;
+  margin-bottom: 44px;
+}
+.kicker {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  color: var(--wine-dark);
+  margin-bottom: 10px;
+}
+.section-head h1, .section-head h2 {
+  font-size: clamp(1.8rem, 3.4vw, 2.4rem);
+  font-weight: 600;
+  line-height: 1.15;
+}
+.section-head p {
+  margin-top: 14px;
+  color: var(--ink-soft);
+  font-size: 1.08rem;
+}
+
+.changelog { list-style: none; margin: 0; padding: 0; max-width: 70ch; }
+.changelog li { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.changelog li:last-child { border-bottom: none; }
+.changelog-meta { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; margin-bottom: 4px; }
+.changelog-build { font-weight: 700; color: var(--wine-dark); font-variant-numeric: tabular-nums; }
+.changelog-date { font-size: 0.85rem; color: var(--ink-soft); }
+.changelog p { margin: 0; color: var(--ink-soft); }
+
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.in { opacity: 1; transform: translateY(0); }
+
+/* ---------- Draft timetable ---------- */
+.timetable-group-head {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 36px 0 18px;
+}
+.timetable-group-head:first-of-type { margin-top: 0; }
+.timetable-list { list-style: none; margin: 0 0 8px; padding: 0; max-width: 70ch; }
+.timetable-item {
+  display: grid;
+  grid-template-columns: 11ch 1fr;
+  gap: 20px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+}
+.timetable-item:last-child { border-bottom: none; }
+@media (max-width: 560px) {
+  .timetable-item { grid-template-columns: 1fr; gap: 4px; }
+}
+.timetable-when { display: flex; flex-direction: column; gap: 2px; }
+.timetable-when .day { font-weight: 700; color: var(--wine-dark); }
+.timetable-when .time { font-size: 0.92rem; color: var(--ink-soft); }
+.timetable-what h4 { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; }
+.timetable-what p { margin: 0; color: var(--ink-soft); }
+
+.cta-row {
+  margin-top: 8px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* The "email button" the obfuscation script renders before JS decodes it --
+   styled like .btn so there's no visible jump once main.js swaps the <span>
+   for a real <a>. */
+.obf-email-btn { display: inline-block; }
+
+/* ---------- Contact / footer ---------- */
+footer.site {
+  background: var(--ink);
+  color: #E9E1D0;
+  padding: 56px 0 32px;
+}
+footer.site .foot-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 32px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid rgba(233,225,208,0.16);
+}
+@media (max-width: 700px) { footer.site .foot-grid { grid-template-columns: 1fr; } }
+footer.site .foot-heading {
+  font-family: 'Fraunces', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 12px;
+  color: #F2ECDD;
+}
+footer.site p, footer.site a { color: #C9BFA8; font-size: 0.96rem; }
+footer.site a { text-decoration: none; }
+footer.site a:hover { color: var(--gold); }
+footer.site .fine {
+  padding-top: 22px;
+  font-size: 0.82rem;
+  color: #A89D82;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+footer.site .build-number { white-space: nowrap; }
+
+.badge-strip {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 11px;
+  border: 1px solid rgba(233,225,208,0.28);
+  border-radius: 100px;
+  color: #C9BFA8;
+}
+
+/* ---------- 404 page ---------- */
+.hero.notfound .wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.card {
+  max-width: 520px;
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 44px 40px 38px;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 18px 34px -18px rgba(42,35,24,0.35), 0 2px 0 rgba(42,35,24,0.06);
+}
+.card::before, .card::after {
+  content: "";
+  position: absolute;
+  width: 46px;
+  height: 16px;
+  background: rgba(217,168,78,0.55);
+  top: -9px;
+  box-shadow: 0 2px 3px rgba(0,0,0,0.12);
+}
+.card::before { left: 30px; transform: rotate(-6deg); }
+.card::after { right: 30px; transform: rotate(5deg); }
+
+.dove-icon {
+  margin: 0 auto 18px;
+  display: block;
+}
+
+/* Inside the 404 card, the eyebrow is a centred badge flanked by two
+   lines rather than the single leading line used in the hero -- this
+   overrides the base .eyebrow rule above by winning on source order. */
+.card .eyebrow {
+  margin-bottom: 14px;
+  font-size: 0.74rem;
+  justify-content: center;
+}
+.card .eyebrow::before, .card .eyebrow::after { content: ""; width: 18px; height: 1px; background: var(--purple); }
+
+.code {
+  font-weight: 900;
+  font-size: clamp(3rem, 12vw, 4.2rem);
+  color: var(--wine-dark);
+  line-height: 1;
+  position: relative;
+  display: inline-block;
+}
+.code svg {
+  position: absolute;
+  left: 0;
+  bottom: -8px;
+  width: 100%;
+  height: 12px;
+}
+
+h1.headline {
+  margin-top: 18px;
+  font-size: clamp(1.4rem, 4vw, 1.75rem);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.card .lede {
+  margin: 14px auto 0;
+  max-width: 38ch;
+  font-size: 1.02rem;
+}
+
+.card .cta-row {
+  margin-top: 30px;
+  justify-content: center;
+}

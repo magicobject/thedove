@@ -1,0 +1,34 @@
+{
+  "name": "thedove",
+  "version": "1.0.0",
+  "description": "The Dove static site - feature tests for content, 404 handling and build numbers.",
+  "private": true,
+  "scripts": {
+    "prepare": "git config core.hooksPath .githooks",
+    "build": "node scripts/build.mjs",
+    "test": "npm run test:unit && playwright test",
+    "test:unit": "node --test \"test-unit/**/*.test.mjs\"",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "serve": "tsx test/support/static-server.ts",
+    "typecheck": "tsc",
+    "audit": "npm audit --audit-level=high"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/magicobject/thedove.git"
+  },
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/magicobject/thedove/issues"
+  },
+  "homepage": "https://github.com/magicobject/thedove#readme",
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
