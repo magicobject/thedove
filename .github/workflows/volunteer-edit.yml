@@ -1,0 +1,481 @@
+# Canonical copy lives in siteadmin's templates/edit-pipeline-workflow.yml —
+# see CLAUDE.md's "GitHub Action template". Each managed repo gets its own
+# copy of this file at .github/workflows/volunteer-edit.yml; there is no
+# sync mechanism yet, so a change here must be manually re-copied into every
+# managed repo.
+#
+# NOT YET LIVE-TESTED against a real repo — that's Phase 6 (pilot rollout).
+# Built and reasoned through carefully, and its scope-check/exclusion logic
+# is unit-tested (scripts/check-diff-scope.ts, backed by
+# src/scope-check.ts's test suite), but the git/PR/merge mechanics below
+# have not run against a real GitHub Actions environment yet. Treat the
+# first real dispatch as the actual test of this file, not a formality.
+#
+# Required repo secrets on the MANAGED repo (not siteadmin):
+#   SITEADMIN_ACTION_SECRET  — same value as siteadmin's ACTION_SHARED_SECRET
+#   ANTHROPIC_API_KEY        — for headless Claude Code
+#
+# The X-Siteadmin-Action-Marker header below is NOT a secret — see
+# ARCHITECTURE.md's "Perimeter: Cloudflare WAF". It exists only so a
+# Cloudflare custom rule on siteadmin's zone can let these two calls skip
+# Bot Fight Mode's JS challenge (which otherwise 403s a plain curl call
+# before it ever reaches the Worker); the real authentication is still
+# ACTION_SHARED_SECRET, checked inside the Worker in constant time.
+# GITHUB_TOKEN is provided automatically by Actions; permissions below grant
+# it what this workflow needs (no separate PAT required inside the Action
+# itself — the PAT/GitHub App siteadmin holds is only for triggering
+# repository_dispatch from outside, a separate credential entirely).
+
+name: Volunteer website edit
+
+on:
+  repository_dispatch:
+    types: [website-edit-request]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  SITEADMIN_URL: https://siteadmin.mediawright.uk
+  SITE: ${{ github.event.client_payload.site }}
+  REQUESTED_BY: ${{ github.event.client_payload.requested_by }}
+  SPEC: ${{ github.event.client_payload.spec }}
+  CONVERSATION_ID: ${{ github.event.client_payload.conversation_id }}
+
+jobs:
+  edit:
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1 (ARCHITECTURE.md's "Git workflow", step 1): independently
+      # re-validate against the live roster — never trust the dispatch
+      # payload alone, and never carry a stale local copy of the roster.
+      - name: Validate against the live roster
+        id: validate
+        env:
+          ACTION_SHARED_SECRET: ${{ secrets.SITEADMIN_ACTION_SECRET }}
+        run: |
+          set -euo pipefail
+          payload=$(jq -nc --arg rb "$REQUESTED_BY" --arg site "$SITE" '{requested_by:$rb, repo_slug:$site}')
+          response=$(curl -sS -w '\n%{http_code}' -X POST "$SITEADMIN_URL/internal/validate" \
+            -H "Authorization: Bearer ${ACTION_SHARED_SECRET}" \
+            -H "Content-Type: application/json" \
+            -H "X-Siteadmin-Action-Marker: edit-pipeline-v1" \
+            -d "$payload")
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          if [ "$http_code" != "200" ]; then
+            echo "::error::Validation endpoint returned HTTP $http_code: $body"
+            exit 1
+          fi
+          if [ "$(echo "$body" | jq -r '.allow')" != "true" ]; then
+            echo "::error::Validation denied for $REQUESTED_BY on $SITE — refusing to proceed."
+            exit 1
+          fi
+          echo "capability=$(echo "$body" | jq -r '.capability')" >> "$GITHUB_OUTPUT"
+          echo "$body" | jq -c '.globs' > /tmp/globs.json
+          echo "$body" | jq -r '"\(.github_owner)/\(.github_repo)"' > /tmp/expected_repo.txt
+          echo "$body" | jq -r '.volunteer_name // empty' | tr -d '\r\n' > /tmp/volunteer_name.txt
+          # So the deploy-confirmation step below knows where to poll for the
+          # new build number — no new credential. The /updates page, not the
+          # homepage: not every managed site stamps a build number into its
+          # footer, but every one shows it on /updates.
+          echo "$body" | jq -r '.updates_url // empty' | tr -d '\r\n' > /tmp/updates_url.txt
+
+      # Fail loudly on mismatch rather than proceeding — see
+      # ARCHITECTURE.md's "Security testing", "Action self-check".
+      - name: Sanity-check this workflow is running in the expected repo
+        run: |
+          expected=$(cat /tmp/expected_repo.txt)
+          if [ "$expected" != "${{ github.repository }}" ]; then
+            echo "::error::Roster says site '$SITE' maps to '$expected', but this workflow is running in '${{ github.repository }}'. Something upstream is wrong — refusing to proceed."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+
+      # Files the volunteer attached in the chat (photos, PDFs). siteadmin
+      # staged them in R2 after checking them (real file-type sniff, no SVG,
+      # EXIF stripped) and this fetches them through siteadmin's own
+      # /internal/attachment endpoint, with the same secret as the validate
+      # call above. No R2 credential lives in this repo, and siteadmin only
+      # hands over a file that belongs to this conversation on this site.
+      # Each is saved under its server-generated name (a UUID plus an allowed
+      # extension, checked again here), never a path from the payload. If a
+      # listed attachment can't be fetched, the run fails rather than letting
+      # an edit that depends on it merge without it.
+      - name: Fetch the volunteer's attachments
+        env:
+          ACTION_SHARED_SECRET: ${{ secrets.SITEADMIN_ACTION_SECRET }}
+          ATTACHMENTS_JSON: ${{ toJSON(github.event.client_payload.attachments) }}
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/attachments"
+          mkdir -p "$dir"
+          keys=$(echo "$ATTACHMENTS_JSON" | jq -r 'if type == "array" then .[] | select(type == "string") else empty end' | head -n 10)
+          [ -z "$keys" ] && { echo "No attachments."; exit 0; }
+          while IFS= read -r key; do
+            name=$(basename "$key")
+            if ! [[ "$name" =~ ^[0-9a-f-]{36}\.(jpg|png|webp|pdf)$ ]]; then
+              echo "::error::Attachment key has an unexpected name — refusing it."
+              exit 1
+            fi
+            payload=$(jq -nc --arg cid "$CONVERSATION_ID" --arg site "$SITE" --arg key "$key" '{conversation_id:$cid, site:$site, key:$key}')
+            status=$(curl -sS -o "$dir/$name" -w '%{http_code}' -X POST "$SITEADMIN_URL/internal/attachment" \
+              -H "Authorization: Bearer ${ACTION_SHARED_SECRET}" \
+              -H "Content-Type: application/json" \
+              -H "X-Siteadmin-Action-Marker: edit-pipeline-v1" \
+              -d "$payload")
+            if [ "$status" != "200" ]; then
+              rm -f "$dir/$name" # the error body, not the file
+              echo "::error::Couldn't fetch attachment $name from siteadmin (HTTP $status)."
+              exit 1
+            fi
+          done <<< "$keys"
+          ls -l "$dir"
+
+      - name: Create branch
+        run: git checkout -b "volunteer-edit/${CONVERSATION_ID}"
+
+      # Restores ~/.npm between runs, keyed on package-lock.json. That holds
+      # npx's download of Claude Code below as well as the test gate's
+      # packages. No node-version on purpose: keeps the runner's own Node,
+      # exactly as before this step existed.
+      - uses: actions/setup-node@v7
+        with:
+          cache: npm
+
+      # Install dependencies BEFORE Claude Code runs. It's blocked from
+      # running npm ci/install itself (see below), so without this step
+      # there's no node_modules: its `npm run build` fails, and the Commit
+      # step's pre-commit hook never runs either (npm ci's `prepare` is what
+      # sets core.hooksPath=.githooks). Found via a real edit that merged
+      # source-only — src/ changed, public/ never regenerated, nothing
+      # visible went live, and the test gate still passed against the stale
+      # pages. No secrets are in scope for this step.
+      - name: Install dependencies
+        run: npm ci
+
+      # Report "working" before Claude Code even starts — the Worker records
+      # this so the widget can show "Working on it…" instead of going quiet
+      # for however long the edit takes. Best-effort in spirit (no retry),
+      # same as every other callback here: this workflow doesn't retry a
+      # failed notification, and a missed "working" ping is harmless since
+      # the next real callback (merged/held/error) still lands.
+      - name: Report "working" status to siteadmin
+        env:
+          ACTION_SHARED_SECRET: ${{ secrets.SITEADMIN_ACTION_SECRET }}
+        run: |
+          payload=$(jq -nc --arg cid "$CONVERSATION_ID" '{conversation_id:$cid, status:"working"}')
+          curl -sS -X POST "$SITEADMIN_URL/internal/callback" \
+            -H "Authorization: Bearer ${ACTION_SHARED_SECRET}" \
+            -H "Content-Type: application/json" \
+            -H "X-Siteadmin-Action-Marker: edit-pipeline-v1" \
+            -d "$payload"
+
+      # Speed matters here: this step was the slowest and least predictable
+      # part of the pipeline (27s to 14 minutes). Three things keep it short
+      # (a fourth, below, keeps it predictable):
+      #
+      # - FILES_JSON: the files siteadmin's chat model already read while
+      #   agreeing the change (see chat.ts's filesReadInConversation), so
+      #   Claude Code starts there instead of re-surveying the repository.
+      #   Only a hint — the scope check below is what enforces anything.
+      # - The deny rules: every site's CLAUDE.md says to run the full test
+      #   suite before pushing, but this workflow runs that test gate itself
+      #   straight afterwards, and no browser is installed yet at this point
+      #   anyway. Deny rules still apply under --dangerously-skip-permissions
+      #   (Claude Code's docs: "Deny rules block in every mode, including
+      #   bypassPermissions"), so this is a hard block, not a request.
+      # - --max-turns: a ceiling for a runaway session. Hitting it fails this
+      #   step, so a half-finished edit is never committed or merged.
+      #
+      # - Pinned CLI version, model and effort: an unpinned `npx -y` runs
+      #   whatever was published that minute (a supply-chain exposure on a
+      #   job that holds ANTHROPIC_API_KEY and write access), and an unset
+      #   model/effort makes every run's cost and quality depend on the CLI's
+      #   current defaults. Content edits are small and well specified, so
+      #   Sonnet at medium effort. Bump the version, model and effort by hand
+      #   (nothing watches an npx argument) and re-copy to every managed repo.
+      #
+      # Both payload values arrive via env, never interpolated into the
+      # script, so nothing in them can be run as shell.
+      - name: Run Claude Code headlessly against the spec
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          FILES_JSON: ${{ toJSON(github.event.client_payload.files) }}
+          EDIT_RULES: >-
+            You are applying one already-agreed website change inside an automated CI job. Nobody is watching,
+            so don't ask questions. Make the smallest change that fully satisfies the request, then stop. If
+            files are listed with the request, start there rather than surveying the repository. Keep following
+            this repository's CLAUDE.md conventions for a change (for example a build number, a changelog entry,
+            or regenerating generated files with npm run build — dependencies are already installed, so
+            npm run build works here), but do NOT run the test suite, npm audit,
+            npm install or npm ci, or Playwright: this workflow commits your change and then runs the full test
+            gate, scope check and security scan itself, and those commands are blocked here. Leave your changes
+            uncommitted; the workflow commits them.
+        run: |
+          # Credit the real volunteer in the changelog. The name is the roster's
+          # (from /internal/validate), never the dispatch payload.
+          volunteer_name=$(cat /tmp/volunteer_name.txt 2>/dev/null || true)
+          if [ -n "$volunteer_name" ]; then
+            EDIT_RULES="$EDIT_RULES This change was requested by $volunteer_name. Where the repository's conventions ask for a changelog author, use exactly that name (add them to the repository's people roster if it has one and they are missing) instead of looking one up with gh."
+          fi
+          # siteadmin never dispatches an empty spec now (chat.ts's
+          # needsAnotherRound), but if one arrives anyway there's nothing to
+          # do: skip, and the "changes" step below reports "no changes".
+          if [ -z "${SPEC//[[:space:]]/}" ]; then
+            echo "::error::The request arrived with an empty spec — nothing to do."
+            exit 0
+          fi
+          prompt="$SPEC"
+          files=$(echo "$FILES_JSON" | jq -r 'if type == "array" then .[] | select(type == "string") else empty end' | head -n 20)
+          if [ -n "$files" ]; then
+            prompt=$(printf '%s\n\nFiles the site assistant already read while agreeing this change (start here):\n%s' "$prompt" "$(echo "$files" | sed 's/^/- /')")
+          fi
+          attachments_dir="$RUNNER_TEMP/attachments"
+          attachments=$(find "$attachments_dir" -maxdepth 1 -type f | sort)
+          if [ -n "$attachments" ]; then
+            prompt=$(printf '%s\n\nThe volunteer attached these files (already checked by siteadmin):\n%s\nIf the change adds one to the site, copy it into the repository where this site keeps that kind of file (for example its images folder), under a short, descriptive, lowercase file name, and reference it from the page. Give every image meaningful alt text.' "$prompt" "$(echo "$attachments" | sed 's/^/- /')")
+          fi
+          npx -y @anthropic-ai/claude-code@2.1.304 -p "$prompt" \
+            --model claude-sonnet-5-5 \
+            --effort medium \
+            --dangerously-skip-permissions \
+            --max-turns 50 \
+            --add-dir "$attachments_dir" \
+            --append-system-prompt "$EDIT_RULES" \
+            --disallowedTools "Bash(npm test*)" "Bash(npm run test*)" "Bash(npx playwright*)" "Bash(npm run audit*)" "Bash(npm audit*)" "Bash(npm ci*)" "Bash(npm install*)"
+
+      - name: Commit
+        run: |
+          git config user.email "siteadmin@mediawright.uk"
+          git config user.name "Site Admin (on behalf of ${REQUESTED_BY})"
+          git add -A
+          git commit -m "Volunteer edit: ${SPEC}" --allow-empty-message || true
+          git push origin "volunteer-edit/${CONVERSATION_ID}"
+
+      # If the edit changed nothing there's nothing to open a PR for, test,
+      # or merge — found via a real request that reached here with an empty
+      # spec: "Open PR" failed with "No commits between main and ...", and the
+      # run then told the volunteer a PR was waiting for approval. Every step
+      # below that needs a PR is skipped instead, and the report says
+      # "no changes", which the widget shows as "didn't go through".
+      - name: Check the edit changed something
+        id: changes
+        run: |
+          git fetch -q origin main
+          if [ "$(git rev-list --count origin/main..HEAD)" -gt 0 ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::The edit produced no changes, so no PR was opened."
+          fi
+
+      - name: Open PR
+        id: pr
+        if: steps.changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pr_url=$(gh pr create \
+            --title "Volunteer edit from ${REQUESTED_BY}" \
+            --body "$(printf 'Requested by %s\n\nSpec:\n%s' "$REQUESTED_BY" "$SPEC")" \
+            --base main --head "volunteer-edit/${CONVERSATION_ID}")
+          echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
+
+      # ARCHITECTURE.md's "Git workflow", step 3: this repo's own test gate,
+      # exactly as its own CLAUDE.md requires before any push — this
+      # pipeline doesn't get to bypass a site's own quality bar.
+      #
+      # `npx playwright install --with-deps chromium` is required here —
+      # every managed repo's own test suite normally only ever runs on a
+      # developer's machine (already has browsers from a prior local
+      # `playwright install`), never in a clean CI environment before this
+      # pipeline. Without this, `npm test` fails instantly on every single
+      # test with "Executable doesn't exist", which looks identical to a
+      # real test failure and silently holds every request for review
+      # regardless of whether the actual edit was fine — found via a real
+      # dry run against kingtonfoodbank. Only chromium is installed since
+      # every managed repo's playwright.config.ts only configures that one
+      # project.
+      # Playwright's browser download is cached between runs, keyed on the
+      # lockfile (which pins the Playwright version). The install in the
+      # test gate below still runs every time: on a cache hit it just skips
+      # the download and installs the OS libraries. Nothing about the tests
+      # themselves changes.
+      - uses: actions/cache@v6
+        if: steps.changes.outputs.has_changes == 'true'
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Run this repo's own test gate
+        id: tests
+        if: steps.changes.outputs.has_changes == 'true'
+        continue-on-error: true
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm test
+          npm run audit
+
+      # Step 4: diff against the real globs, the hardcoded infra exclusion
+      # list, AND a scan of added lines for script-injection-shaped markup
+      # (<script>, javascript:, inline event handlers, <iframe>) — see
+      # scripts/check-diff-scope.ts. The FULL diff is piped in, not just
+      # --name-only, so the script can derive changed paths from the diff's
+      # own headers and scan added content in one pass — the two checks can
+      # never drift out of sync with each other.
+      - name: Diff-check against scope + infra exclusion + script injection
+        id: scope
+        if: steps.changes.outputs.has_changes == 'true'
+        continue-on-error: true
+        run: |
+          git fetch origin main
+          git diff origin/main...HEAD | node .github/scripts/check-diff-scope.mjs "$(cat /tmp/globs.json)"
+          # check-diff-scope.mjs is vendored into this repo at
+          # .github/scripts/ — copied from siteadmin's
+          # templates/check-diff-scope-standalone.mjs at onboarding time,
+          # alongside this workflow file itself (see CLAUDE.md's "Adding a
+          # new managed repo means..."). Dependency-free on purpose, so this
+          # repo doesn't need a new devDependency just for this step.
+
+      # Step 5/6: auto-merge only if BOTH conditions hold; otherwise hold
+      # for review with a clear reason — the only case a human gets pulled
+      # into, and the exception, not the norm.
+      - name: Merge if green, in-scope, and clear of the exclusion list
+        id: merge
+        if: steps.changes.outputs.has_changes == 'true' && steps.tests.outcome == 'success' && steps.scope.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A direct merge, not `gh pr merge --auto` — we've already gated on
+          # the checks ourselves in the steps above; --auto would defer to
+          # branch-protection required status checks that may not exist here.
+          gh pr merge --squash "${{ steps.pr.outputs.pr_url }}"
+          sha=$(gh pr view "${{ steps.pr.outputs.pr_url }}" --json mergeCommit -q '.mergeCommit.oid // empty')
+          echo "commit_url=https://github.com/${{ github.repository }}/commit/$sha" >> "$GITHUB_OUTPUT"
+
+      # The merge itself is NOT "live" — Cloudflare Workers Builds deploys
+      # on its own schedule after this push to main, entirely outside this
+      # workflow (see CLAUDE.md's "The bug we're fixing"). These two quick
+      # pings keep the widget's status line moving instead of leaving it
+      # saying "Merged and live" when the production site hasn't actually
+      # redeployed yet — the "Wait for the deploy to go live" step below is
+      # what actually confirms that.
+      - name: Report "merged" status to siteadmin
+        if: steps.merge.outcome == 'success'
+        env:
+          ACTION_SHARED_SECRET: ${{ secrets.SITEADMIN_ACTION_SECRET }}
+        run: |
+          payload=$(jq -nc --arg cid "$CONVERSATION_ID" --arg url "${{ steps.merge.outputs.commit_url }}" \
+            '{conversation_id:$cid, status:"merged", commit_url:$url}')
+          curl -sS -X POST "$SITEADMIN_URL/internal/callback" \
+            -H "Authorization: Bearer ${ACTION_SHARED_SECRET}" \
+            -H "Content-Type: application/json" \
+            -H "X-Siteadmin-Action-Marker: edit-pipeline-v1" \
+            -d "$payload"
+
+      - name: Report "deploying" status to siteadmin
+        if: steps.merge.outcome == 'success'
+        env:
+          ACTION_SHARED_SECRET: ${{ secrets.SITEADMIN_ACTION_SECRET }}
+        run: |
+          payload=$(jq -nc --arg cid "$CONVERSATION_ID" --arg url "${{ steps.merge.outputs.commit_url }}" \
+            '{conversation_id:$cid, status:"deploying", commit_url:$url}')
+          curl -sS -X POST "$SITEADMIN_URL/internal/callback" \
+            -H "Authorization: Bearer ${ACTION_SHARED_SECRET}" \
+            -H "Content-Type: application/json" \
+            -H "X-Siteadmin-Action-Marker: edit-pipeline-v1" \
+            -d "$payload"
+
+      # The actual deploy confirmation, with NO new Cloudflare credential —
+      # deliberately avoided, see CLAUDE.md/ARCHITECTURE.md. Every managed
+      # site already bumps its build number on every commit (the Commit
+      # step's pre-commit hook above) and shows the current one on its
+      # /updates page (CLAUDE.md's "Build numbers and changelog" convention)
+      # — but not every site's wording is the same (kingtonfoodbank's footer
+      # says "Build 2026.10.19.001", kington-parishes' /updates page says
+      # "Current build: 2026.10.19.001", bob's changelog just shows the bare
+      # number), so this matches the bare build-number TOKEN on /updates
+      # rather than a fixed phrase, which every managed site's page contains
+      # regardless of wording. Up to 30 attempts at 10s is ~5 minutes — a
+      # slow Cloudflare Workers Build shouldn't be mistaken for a failed one
+      # before then. Deliberately no `set -e` here: a transient curl failure
+      # (DNS blip, momentary 5xx) must count as "not live yet" and keep
+      # retrying, not abort the step and leave the volunteer with no outcome
+      # at all. `--` before every URL so a value curl/grep could otherwise
+      # mistake for a flag is always read as a positional argument.
+      - name: Wait for the deploy to go live
+        if: steps.changes.outputs.has_changes == 'true' && steps.tests.outcome == 'success' && steps.scope.outcome == 'success'
+        env:
+          ACTION_SHARED_SECRET: ${{ secrets.SITEADMIN_ACTION_SECRET }}
+        run: |
+          build=$(jq -r '"\(.date).\(.build | tostring | if length==1 then "00"+. elif length==2 then "0"+. else . end)"' build-number.json)
+          updates_url=$(cat /tmp/updates_url.txt)
+          status="deploy_unconfirmed"
+          for attempt in $(seq 1 30); do
+            if curl -sS -- "$updates_url" 2>/dev/null | grep -qF -- "$build"; then
+              status="deployed"
+              break
+            fi
+            sleep 10
+          done
+          payload=$(jq -nc --arg cid "$CONVERSATION_ID" --arg status "$status" --arg url "${{ steps.merge.outputs.commit_url }}" \
+            '{conversation_id:$cid, status:$status, commit_url:$url}')
+          curl -sS -X POST "$SITEADMIN_URL/internal/callback" \
+            -H "Authorization: Bearer ${ACTION_SHARED_SECRET}" \
+            -H "Content-Type: application/json" \
+            -H "X-Siteadmin-Action-Marker: edit-pipeline-v1" \
+            -d "$payload"
+
+      - name: Leave a note if held for review
+        if: steps.changes.outputs.has_changes == 'true' && (steps.tests.outcome != 'success' || steps.scope.outcome != 'success')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment "${{ steps.pr.outputs.pr_url }}" --body "Held for review — tests: ${{ steps.tests.outcome }}, scope check: ${{ steps.scope.outcome }}. See this run's logs for the specific reason."
+
+      # Phase 5: report the outcome back so the volunteer sees a chat
+      # message instead of silence — see ARCHITECTURE.md's "Notification".
+      # The success path (tests + scope both green, merged) is already
+      # fully reported above (merged -> deploying -> deployed/
+      # deploy_unconfirmed), so this is only the remaining three cases: the
+      # job failed before it could even produce a diff to check (has_changes
+      # never got set at all — e.g. "Install dependencies" or Claude Code
+      # itself crashed outright), nothing changed, or the test/scope gate
+      # failed.
+      - name: Report completion back to siteadmin
+        if: always()
+        env:
+          ACTION_SHARED_SECRET: ${{ secrets.SITEADMIN_ACTION_SECRET }}
+        run: |
+          if [ -z "${{ steps.changes.outputs.has_changes }}" ]; then
+            # The "changes" step never ran (or never got to write its output),
+            # meaning something upstream crashed outright — a genuine
+            # infra-level failure, distinct from a well-formed request that
+            # just needs a human look. Never misreport this as "held for
+            # review": there's no diff and no PR to review.
+            payload=$(jq -nc --arg cid "$CONVERSATION_ID" \
+              --arg reason "Workflow failed before a diff could be produced — see the Action run log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              '{conversation_id:$cid, status:"error", reason:$reason}')
+          elif [ "${{ steps.changes.outputs.has_changes }}" = "false" ]; then
+            # Nothing was changed, so no PR exists and nothing is waiting for
+            # anyone — the widget shows this as "didn't go through".
+            payload=$(jq -nc --arg cid "$CONVERSATION_ID" '{conversation_id:$cid, status:"held_for_review", reason:"no changes"}')
+          elif [ "${{ steps.tests.outcome }}" = "success" ] && [ "${{ steps.scope.outcome }}" = "success" ]; then
+            # Already reported in full by the dedicated merged/deploying/
+            # deployed (or deploy_unconfirmed) steps above — nothing left to
+            # tell siteadmin here.
+            exit 0
+          else
+            reason="tests: ${{ steps.tests.outcome }}, scope check: ${{ steps.scope.outcome }}"
+            payload=$(jq -nc --arg cid "$CONVERSATION_ID" --arg reason "$reason" --arg pr "${{ steps.pr.outputs.pr_url }}" \
+              '{conversation_id:$cid, status:"held_for_review", reason:$reason, pr_url:$pr}')
+          fi
+          curl -sS -X POST "$SITEADMIN_URL/internal/callback" \
+            -H "Authorization: Bearer ${ACTION_SHARED_SECRET}" \
+            -H "Content-Type: application/json" \
+            -H "X-Siteadmin-Action-Marker: edit-pipeline-v1" \
+            -d "$payload"
