@@ -87,7 +87,11 @@ for (const page of PAGES) {
   let extraHead = '';
   if (page.robots) extraHead += `<meta name="robots" content="${page.robots}">\n`;
   if (page.canonical !== false) {
-    extraHead += `<link rel="canonical" href="${SITE_ORIGIN}/${page.slug}.html">\n`;
+    // Cloudflare serves the clean URL (and 307-redirects the .html form to
+    // it), so the canonical must name the clean URL too, not a URL that
+    // immediately redirects elsewhere.
+    const cleanPath = page.slug === 'index' ? '/' : `/${page.slug}`;
+    extraHead += `<link rel="canonical" href="${SITE_ORIGIN}${cleanPath}">\n`;
   }
 
   let html = pageTemplate

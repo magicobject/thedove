@@ -9,6 +9,10 @@
       </div>
       <ul class="changelog">
         <li>
+          <div class="changelog-meta"><span class="changelog-build">2026.11.01.002</span><span class="changelog-author">Greg Wright</span><span class="changelog-date">1 November 2026</span></div>
+          <p>Fix the canonical URL on every page: it pointed at the <code>.html</code> form of the page (e.g. <code>/index.html</code>), which itself redirects straight back to the clean URL (<code>/</code>). It now names the clean URL directly.</p>
+        </li>
+        <li>
           <div class="changelog-meta"><span class="changelog-build">2026.10.20.004</span><span class="changelog-author">Greg Wright</span><span class="changelog-date">20 October 2026</span></div>
           <p>Stop stamping the build number into every page's footer -- it now only appears here, on <code>/updates.html</code>. Cache-busting for <code>style.css</code>, <code>main.js</code> and the logo images now uses a hash of each asset's own content instead of the shared build number, so a change to one file no longer touches the query string -- or diff -- of every other generated page.</p>
         </li>
