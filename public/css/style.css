@@ -311,6 +311,23 @@ section.alt { background: var(--bg-alt); }
 }
 .reveal.in { opacity: 1; transform: translateY(0); }
 
+/* ---------- Map embed ---------- */
+.map-embed {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.map-embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
 /* ---------- Draft timetable ---------- */
 .timetable-group-head {
   font-size: 1.2rem;
