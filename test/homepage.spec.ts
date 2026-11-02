@@ -27,7 +27,7 @@ test('the home page states the venue and the opening status', async ({ page }) =
 
   await expect(page.locator('main')).toContainText("former 'Wine Vaults' pub");
   await expect(page.locator('main')).toContainText('heart of Kington');
-  await expect(page.locator('main')).toContainText('Opening at the end of October 2026.');
+  await expect(page.locator('main')).toContainText('Now open.');
 });
 
 test('the draft timetable lists every weekly and monthly session', async ({ page }) => {
