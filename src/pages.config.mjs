@@ -17,7 +17,7 @@ export const PAGES = [
   {
     slug: 'index',
     title: 'The Dove',
-    description: "The Dove is a friendly, hospitable place for informal groups and meetings, based in the former 'Wine Vaults' pub in the heart of Kington. Opening at the end of October 2026.",
+    description: "The Dove is a friendly, hospitable place for informal groups and meetings, based in the former 'Wine Vaults' pub in the heart of Kington. Now open.",
     header: true,
   },
   {

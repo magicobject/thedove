@@ -21,7 +21,12 @@ export const SITE = {
   venueLine: "The Dove is based in the former 'Wine Vaults' pub, right in the heart of Kington.",
   town: 'Kington',
 
-  openingStatus: 'Opening at the end of October 2026.',
+  // Coordinates for the "Find us" map embed, given by Greg directly (no
+  // street address/postcode exists for The Dove yet -- see CLAUDE.md).
+  mapLat: '52.20333268907436',
+  mapLng: '-3.0304673451571005',
+
+  openingStatus: 'Now open.',
 
   contactName: CONTACT_NAME,
   email: EMAIL,

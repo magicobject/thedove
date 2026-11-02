@@ -16,7 +16,7 @@
       <div class="notice" aria-label="Opening status">
         <div class="tag">Status</div>
         <div class="day">
-          Opening soon
+          Open now
           <svg viewBox="0 0 200 14" preserveAspectRatio="none" aria-hidden="true">
             <path d="M2 8 C 40 2, 80 12, 120 6 S 180 2, 198 8" fill="none" stroke="#D9A84E" stroke-width="4" stroke-linecap="round" />
           </svg>
@@ -108,6 +108,24 @@
         <p>Thank you for supporting The Dove! We hope this initiative will benefit the communities of Kington and the surrounding villages and would welcome suggestions for further groups and events which might be hosted by The Dove.</p>
       </div>
       <div class="cta-row">{{CONTACT_CTA}}</div>
+    </div>
+  </section>
+
+  <section id="find-us" class="reveal">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="kicker">Find us</div>
+        <h2>Where to find {{ORG_NAME}}</h2>
+        <p>{{VENUE_LINE}}</p>
+      </div>
+      <div class="map-embed">
+        <iframe
+          src="https://www.google.com/maps?q={{MAP_LAT}},{{MAP_LNG}}&z=17&output=embed"
+          title="Map showing the location of {{ORG_NAME}} in {{TOWN}}"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade">
+        </iframe>
+      </div>
     </div>
   </section>
 
