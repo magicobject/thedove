@@ -45,6 +45,7 @@ test('the draft timetable lists every weekly and monthly session', async ({ page
     'Pause Caf',
     'Soul Reader book club',
     'Mere Christianity',
+    'Coffee Morning',
   ]) {
     await expect(timetable).toContainText(entry);
   }
