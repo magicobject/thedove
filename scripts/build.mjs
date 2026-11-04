@@ -32,6 +32,7 @@ const ASSET_FILES = {
   JS_HASH: 'js/main.js',
   DOVE_MARK_28_HASH: 'images/dove-mark-28.png',
   DOVE_MARK_72_HASH: 'images/dove-mark-72.png',
+  DOVE_LOGO_HASH: 'images/dove-logo.png',
 };
 
 function assetHashTokens() {
