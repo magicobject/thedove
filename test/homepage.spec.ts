@@ -50,3 +50,18 @@ test('the draft timetable lists every weekly and monthly session', async ({ page
     await expect(timetable).toContainText(entry);
   }
 });
+
+test('the header has a Donate now pill pointing at the Parish Giving Scheme page', async ({ page }) => {
+  await page.goto('/index.html');
+  const pill = page.locator('header.site a.donate-pill');
+  await expect(pill).toContainText('Donate now');
+  await expect(pill).toHaveAttribute(
+    'href',
+    'https://www.parishgiving.org.uk/donors/find-your-parish/kington-st-mary-herefordshire',
+  );
+});
+
+test('the hero shows the Dove logo', async ({ page }) => {
+  await page.goto('/index.html');
+  await expect(page.locator('img.hero-logo')).toBeVisible();
+});

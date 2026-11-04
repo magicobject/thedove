@@ -40,6 +40,10 @@ export const SITE = {
     body: "Hi Sally, my name is [your name] and I'd like to find out more about: [the group or activity you're interested in]",
   }),
 
+  // Giving page for Kington St Mary on the Parish Giving Scheme -- the
+  // target of the "Donate" pill in the header (and nowhere else).
+  donateHref: 'https://www.parishgiving.org.uk/donors/find-your-parish/kington-st-mary-herefordshire',
+
   mediawrightHref: 'https://mediawright.uk',
   mediawrightLabel: 'mediawright.uk',
 };
