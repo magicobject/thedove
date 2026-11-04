@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { encodeEmail, readableEmail, emailLinkHtml, emailButtonHtml } from '../scripts/obfuscate-email.mjs';
+import { encodeEmail, readableEmail, emailLinkHtml, emailButtonHtml, emailNamedLinkHtml } from '../scripts/obfuscate-email.mjs';
 
 test('encodeEmail round-trips and does not contain the address', () => {
   const address = 'vicar@kingtonparishes.org.uk';
@@ -33,4 +33,12 @@ test('the button html HTML-escapes attribute values', () => {
   const html = emailButtonHtml('vicar@kingtonparishes.org.uk', 'Email "Sally" & Welch', { subject: 'A & B' });
   assert.ok(html.includes('data-label="Email &quot;Sally&quot; &amp; Welch"'));
   assert.ok(html.includes('data-subject="A &amp; B"'));
+});
+
+test('the named link html shows the name, never the address, and carries the label for main.js', () => {
+  const html = emailNamedLinkHtml('lisa.anderson@hereford.anglican.org', 'Lisa Anderson');
+  assert.ok(!html.includes('@'));
+  assert.ok(!html.includes('mailto:'));
+  assert.ok(html.includes('data-label="Lisa Anderson"'));
+  assert.ok(html.includes('Lisa Anderson (lisa.anderson [at] hereford.anglican.org)'));
 });

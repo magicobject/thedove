@@ -8,7 +8,7 @@
 // Everything here comes from the printed leaflet Greg provided -- no street
 // address or postcode was given for The Dove, so none is invented here.
 
-import { emailButtonHtml } from '../scripts/obfuscate-email.mjs';
+import { emailButtonHtml, emailNamedLinkHtml } from '../scripts/obfuscate-email.mjs';
 
 const EMAIL = 'vicar@kingtonparishes.org.uk';
 const CONTACT_NAME = 'Sally Welch';
@@ -39,6 +39,11 @@ export const SITE = {
     subject: 'Getting involved with The Dove',
     body: "Hi Sally, my name is [your name] and I'd like to find out more about: [the group or activity you're interested in]",
   }),
+
+  // Safeguarding contacts (copied from kington-parishes' safeguarding page).
+  // Names link to an obfuscated mailto:, like the contact email above.
+  parishSafeguardingOfficerLink: emailNamedLinkHtml('st.marys.kington.secretary54@gmail.com', 'Christine Robinson'),
+  diocesanSafeguardingOfficerLink: emailNamedLinkHtml('lisa.anderson@hereford.anglican.org', 'Lisa Anderson'),
 
   mediawrightHref: 'https://mediawright.uk',
   mediawrightLabel: 'mediawright.uk',

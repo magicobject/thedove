@@ -21,6 +21,12 @@ export const PAGES = [
     header: true,
   },
   {
+    slug: 'safeguarding',
+    title: 'Safeguarding - The Dove',
+    description: 'Safeguarding contacts, our Safeguarding Policy and national helplines.',
+    header: true,
+  },
+  {
     slug: 'updates',
     title: 'Site Updates - The Dove',
     description: 'Internal build changelog for this site -- not linked from anywhere on the site.',

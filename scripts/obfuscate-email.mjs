@@ -16,6 +16,15 @@ export function emailLinkHtml(address) {
   return `<span class="obf-email" data-e="${encodeEmail(address)}">${readableEmail(address)}</span>`;
 }
 
+// A mailto: link whose visible text is a person's name rather than the
+// address (the safeguarding contacts): main.js uses data-label as the link
+// text once it has decoded the address. Without JavaScript the "name [at]
+// domain" fallback shows after the name, so the address is still readable.
+export function emailNamedLinkHtml(address, label) {
+  const safeLabel = label.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `<span class="obf-email" data-e="${encodeEmail(address)}" data-label="${safeLabel}">${safeLabel} (${readableEmail(address)})</span>`;
+}
+
 // HTML-escape a value destined for a double-quoted attribute. Used for the
 // subject/body/label on an emailButtonHtml() span -- none of those ever
 // contain the address itself, so they don't need obfuscating, only escaping.
