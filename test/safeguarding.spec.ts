@@ -46,3 +46,13 @@ test('no contact link on the safeguarding page overflows its card', async ({ pag
     }
   }
 });
+
+test('the main menu links to /safeguarding after Get in touch', async ({ page }) => {
+  for (const path of ['/index.html', '/safeguarding.html']) {
+    await page.goto(path);
+    const links = page.locator('header.site nav.links a:not(.donate-pill)');
+    await expect(links.last()).toHaveText('Safeguarding');
+    await expect(links.last()).toHaveAttribute('href', '/safeguarding');
+    await expect(links.nth(-2)).toHaveText('Get in touch');
+  }
+});
