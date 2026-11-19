@@ -28,6 +28,12 @@ export const PAGES = [
     header: true,
   },
   {
+    slug: 'donate',
+    title: 'Donate - The Dove',
+    description: "The Dove is run by the St Mary's Kington PCC. Find out how to give through the Parish Giving Scheme.",
+    header: true,
+  },
+  {
     slug: 'updates',
     title: 'Site Updates - The Dove',
     description: 'Internal build changelog for this site -- not linked from anywhere on the site.',

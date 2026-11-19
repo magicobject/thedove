@@ -10,6 +10,7 @@ export interface SitePage {
 export const PAGES: SitePage[] = [
   { path: '/index.html', titleContains: 'The Dove' },
   { path: '/safeguarding.html', titleContains: 'Safeguarding' },
+  { path: '/donate.html', titleContains: 'Donate' },
   { path: '/updates.html', titleContains: 'Site Updates' },
   { path: '/404.html', titleContains: 'Page not found' },
 ];
