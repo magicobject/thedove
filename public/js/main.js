@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
       var address = atob(el.getAttribute('data-e')).split('').reverse().join('');
       var a = document.createElement('a');
       a.href = 'mailto:' + address;
-      a.textContent = address;
+      a.textContent = el.getAttribute('data-label') || address;
       el.replaceWith(a);
     } catch (e) { /* leave the readable fallback */ }
   });
