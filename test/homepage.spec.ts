@@ -51,11 +51,18 @@ test('the draft timetable lists every weekly and monthly session', async ({ page
   }
 });
 
-test('the header has a Donate now pill pointing at the Parish Giving Scheme page', async ({ page }) => {
+test('the header has a Donate now pill leading to the interim /donate page', async ({ page }) => {
   await page.goto('/index.html');
   const pill = page.locator('header.site a.donate-pill');
   await expect(pill).toContainText('Donate now');
-  await expect(pill).toHaveAttribute(
+  await expect(pill).toHaveAttribute('href', '/donate');
+});
+
+test('the donate page explains the PCC and links on to the Parish Giving Scheme', async ({ page }) => {
+  await page.goto('/donate.html');
+  await expect(page.locator('main')).toContainText('run by the St Mary');
+  await expect(page.locator('main')).toContainText('PCC');
+  await expect(page.getByRole('link', { name: /Continue to the Parish Giving Scheme/ })).toHaveAttribute(
     'href',
     'https://www.parishgiving.org.uk/donors/find-your-parish/kington-st-mary-herefordshire',
   );
