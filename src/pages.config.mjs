@@ -11,6 +11,7 @@ export const NAV = [
   { href: '#about', label: 'About' },
   { href: '#timetable', label: 'Timetable' },
   { href: '#contact', label: 'Get in touch' },
+  { href: '/safeguarding', label: 'Safeguarding' },
 ];
 
 export const PAGES = [
