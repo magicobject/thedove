@@ -121,6 +121,9 @@ nav.links a:hover { border-color: var(--wine); color: var(--wine-dark); }
 
 @media (max-width: 620px) {
   nav.links { gap: 16px; font-size: 0.85rem; }
+  .nav-row { flex-wrap: wrap; row-gap: 10px; }
+  nav.links { width: 100%; justify-content: space-between; }
+  nav.links a { white-space: nowrap; }
   .nav-row { padding: 14px 20px; }
 }
 
@@ -208,6 +211,29 @@ nav.links a:hover { border-color: var(--wine); color: var(--wine-dark); }
   border: 2px solid var(--purple);
 }
 .btn-secondary:hover { background: var(--purple); color: var(--bg); }
+
+/* Hero logo: the supplied artwork is on pure white, so multiply blends it
+   into the cream page background. */
+.hero-side { display: grid; gap: 28px; justify-items: center; }
+.hero-logo { width: min(220px, 60%); height: auto; mix-blend-mode: multiply; }
+
+/* Donate pill in the header nav. Text #FBF7EE on --wine: 10.47:1 (same
+   pairing as .btn-primary). */
+nav.links a.donate-pill {
+  background: var(--wine);
+  color: #FBF7EE;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border-bottom: 0;
+  white-space: nowrap;
+  box-shadow: 0 2px 0 var(--wine-dark);
+}
+nav.links a.donate-pill:hover { background: var(--wine-dark); color: #FBF7EE; }
+nav.links { align-items: center; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
 
 /* ---------- Notice card (signature element) ---------- */
 .notice {

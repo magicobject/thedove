@@ -45,6 +45,10 @@ export const SITE = {
   parishSafeguardingOfficerLink: emailNamedLinkHtml('st.marys.kington.secretary54@gmail.com', 'Christine Robinson'),
   diocesanSafeguardingOfficerLink: emailNamedLinkHtml('lisa.anderson@hereford.anglican.org', 'Lisa Anderson'),
 
+  // Giving page for Kington St Mary on the Parish Giving Scheme -- the
+  // target of the "Donate" pill in the header (and nowhere else).
+  donateHref: 'https://www.parishgiving.org.uk/donors/find-your-parish/kington-st-mary-herefordshire',
+
   mediawrightHref: 'https://mediawright.uk',
   mediawrightLabel: 'mediawright.uk',
 };
